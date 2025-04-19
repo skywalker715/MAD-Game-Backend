@@ -18,7 +18,25 @@ if (err) {
  res.json({ id: this.lastID, username });
  });
 });
-// 2. Get user data
+// 2. Login user
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+  const sql = `SELECT id, username FROM users WHERE username = ? AND password = ?`;
+  db.get(sql, [username, password], (err, row) => {
+    if (err) {
+      return res.status(400).json({ error: err.message });
+    }
+    if (!row) {
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+    res.json({ 
+      id: row.id, 
+      username: row.username,
+      message: 'Login successful' 
+    });
+  });
+});
+// 3. Get user data
 app.get('/user/:id', (req, res) => {
  const sql = `SELECT id, username FROM users WHERE id = ?`;
  db.get(sql, [req.params.id], (err, row) => {
@@ -31,7 +49,7 @@ app.get('/user/:id', (req, res) => {
  res.json(row);
  });
 });
-// 3. Add a new game score
+// 4. Add a new game score
 app.post('/game-score', (req, res) => {
     const { user_id, score } = req.body;
     const sql = `INSERT INTO game_scores (user_id, score) VALUES (?, ?)`;
@@ -47,7 +65,7 @@ app.post('/game-score', (req, res) => {
         });
     });
 });
-// 4. Get user's game scores
+// 5. Get user's game scores
 app.get('/user/:id/scores', (req, res) => {
     const sql = `
         SELECT score, played_at 
@@ -62,7 +80,7 @@ app.get('/user/:id/scores', (req, res) => {
         res.json(rows);
     });
 });
-// 5. Get user's statistics
+// 6. Get user's statistics
 app.get('/user/:id/statistics', (req, res) => {
     const sql = `
         SELECT 
@@ -81,7 +99,7 @@ app.get('/user/:id/statistics', (req, res) => {
         res.json(row);
     });
 });
-// 6. Delete user and their scores
+// 7. Delete user and their scores
 app.delete('/user/:id', (req, res) => {
     // First delete all game scores for the user
     db.run(`DELETE FROM game_scores WHERE user_id = ?`, [req.params.id], (err) => {
