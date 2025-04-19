@@ -134,3 +134,8 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+# Exclude node_modules and users.db
+node_modules/
+users.db
+.DS_Store
