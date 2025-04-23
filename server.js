@@ -4,9 +4,8 @@ const bodyParser = require('body-parser');
 const db = require('./database');
 const app = express();
 const PORT = 3000;
-// Middleware
-app.use(cors()); // Allow Unity to access API
-app.use(bodyParser.json()); // Parse JSON requests
+app.use(cors());
+app.use(bodyParser.json());
 // 1. Register a new user
 app.post('/register', (req, res) => {
 const { username, password } = req.body;
@@ -101,7 +100,6 @@ app.get('/user/:id/statistics', (req, res) => {
 });
 // 7. Delete user and their scores
 app.delete('/user/:id', (req, res) => {
-    // First delete all game scores for the user
     db.run(`DELETE FROM game_scores WHERE user_id = ?`, [req.params.id], (err) => {
         if (err) {
             return res.status(400).json({ error: err.message });
@@ -113,6 +111,65 @@ app.delete('/user/:id', (req, res) => {
             }
             res.json({ message: 'User and all associated scores deleted' });
         });
+    });
+});
+// 8. Get user's score graph
+app.get('/user/:id/score-graph', (req, res) => {
+    const sql = `
+        SELECT score, played_at 
+        FROM game_scores 
+        WHERE user_id = ? 
+        ORDER BY played_at ASC
+    `;
+    db.all(sql, [req.params.id], (err, rows) => {
+        if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+        
+        // Format data for QuickChart
+        const labels = rows.map(row => {
+            const date = new Date(row.played_at);
+            return date.toLocaleDateString();
+        });
+        const scores = rows.map(row => row.score);
+        
+        // Create QuickChart URL
+        const chartConfig = {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Game Scores',
+                    data: scores,
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                title: {
+                    display: true,
+                    text: 'Game Score History'
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Score'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                }
+            }
+        };
+        
+        const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}`;
+        res.json({ chartUrl });
     });
 });
 // Start server
